@@ -1,30 +1,27 @@
-import {
-  ConnectionProvider,
-  WalletProvider,
-} from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { ReactNode } from "react";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import { SOLANA_RPC } from "@/config";
+// src/app/providers.tsx - Remove react-query dependency
+"use client";
+import React, { ReactNode } from "react";
+import { PageProvider } from "@/contexts/PageContext";
+import { ShowSideBarProvider } from "@/contexts/showSideBarContext";
+import dynamic from "next/dynamic";
 
-require("@solana/wallet-adapter-react-ui/styles.css");
+// Dynamically load Solana wallet provider to reduce initial bundle
+const SolanaWalletProvider = dynamic(() => 
+  import("@/contexts/SolanaWalletProvider").then(mod => ({ default: mod.SolanaWalletProvider })), 
+  { 
+    ssr: false,
+    loading: () => <div className="min-h-screen bg-gray-900 animate-pulse"></div>
+  }
+);
 
-export const SolanaWalletProvider = ({ children }: { children: ReactNode }) => {
-  // const network = WalletAdapterNetwork.Mainnet;
-
-  // You can also provide a custom RPC endpoint.
-  const endpoint = SOLANA_RPC;
-
-  const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
-
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <ShowSideBarProvider>
+      <PageProvider>
+        <SolanaWalletProvider>
+          {children}
+        </SolanaWalletProvider>
+      </PageProvider>
+    </ShowSideBarProvider>
   );
-};
+}

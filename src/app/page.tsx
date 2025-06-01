@@ -1,86 +1,143 @@
 'use client';
-import {useState} from 'react';
-import ConnectButton from "@/components/ConnectButton";
-import Header from "@/components/Header";
-// import { useWallet } from "@solana/wallet-adapter-react";
-import Image from "next/image";
-import { toMetaplexFileFromBrowser } from '@metaplex-foundation/js';
-import { createSPLToken } from '@/contexts/createSPLToken';
+import { useState, Suspense } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import LandingHeader from '@/components/LandingHeader/LandingHeader';
-import HotTokens from '@/components/HotTokens/HotTokens';
-import DiscoverTokens from '@/components/DiscoverTokens/DiscoverTokens';
-import Banner from '@/components/Banner/Banner';
-import Footer from '@/components/Footer/Footer';
-import { RAYDIUM_MAINNET, Clmm } from '@raydium-io/raydium-sdk';
+import dynamic from 'next/dynamic';
 
-export default function Home() {
+// Dynamically import heavy components to improve loading speed
+const LandingHeader = dynamic(() => import('@/components/LandingHeader/LandingHeader'), {
+  ssr: false,
+  loading: () => <div className="h-20 bg-gray-800 animate-pulse"></div>
+});
 
-  const wallet  = useWallet()
-  const {connection} = useConnection()
+const HotTokens = dynamic(() => import('@/components/HotTokens/HotTokens'), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-gray-700 animate-pulse rounded-lg m-6"></div>
+});
 
-  const [tokenName, setTokenName] = useState("")
-  const [tokenSymbol, setTokenSymbol] = useState("")
-  const [tokenLogo, setTokenLogo] = useState<File | null>()
-  const [tokenDecimal, setTokenDecimal] = useState(9)
-  const [tokenBalance, setTokenBalance] = useState(0)
+const DiscoverTokens = dynamic(() => import('@/components/DiscoverTokens/DiscoverTokens'), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-gray-700 animate-pulse rounded-lg m-6"></div>
+});
 
-  // const [isShowOrigin, setIsShowOrigin] = useState(false);
-  // const wallet = useWallet();
-  // const [loading, setLoading] = useState(false);
-  // const handleNftStake = async () => {
-  //   if (!mint) return;
-  //   try {
-  //     const tx = await stakeNFT(wallet, mint, setLoading);
-  //     if (!tx || !wallet.publicKey) return;
-  //     await stake(tx, wallet.publicKey?.toBase58(), setLoading, getNfts);
-  //   } catch (err) {
-  //     console.log(err);
-  //   }
-  // };
+const Banner = dynamic(() => import('@/components/Banner/Banner'), {
+  ssr: false,
+  loading: () => <div className="h-32 bg-gray-700 animate-pulse"></div>
+});
+
+const Footer = dynamic(() => import('@/components/Footer/Footer'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-800 animate-pulse"></div>
+});
+
+export default function HomePage() {
+  const wallet = useWallet();
+  const { connection } = useConnection();
+
+  const [tokenName, setTokenName] = useState("");
+  const [tokenSymbol, setTokenSymbol] = useState("");
+  const [tokenLogo, setTokenLogo] = useState<File | null>();
+  const [tokenDecimal, setTokenDecimal] = useState(9);
+  const [tokenBalance, setTokenBalance] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Dynamic token creation with lazy loading of heavy packages
   const handleCreateToken = async () => {
-    if (
-      tokenName != "" &&
-      tokenSymbol != "" &&
-      tokenLogo != null &&
-      tokenBalance != 0
-    ) {
-      if (!wallet.publicKey ) return;
+    if (!tokenName || !tokenSymbol || !tokenLogo || !tokenBalance) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    if (!wallet.publicKey) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Dynamic import of heavy packages only when needed
+      const [
+        { toMetaplexFileFromBrowser },
+        { createSPLToken }
+      ] = await Promise.all([
+        import('@metaplex-foundation/js'),
+        import('@/contexts/createSPLToken')
+      ]);
+
       const _file = await toMetaplexFileFromBrowser(tokenLogo);
-      await createSPLToken(wallet.publicKey, wallet, connection, tokenBalance, tokenDecimal, true, tokenName, tokenSymbol, "", "", _file, "string")
-    } else {
-      alert("Invalid params")
+      await createSPLToken.createSPLToken(
+        wallet.publicKey, 
+        wallet, 
+        connection, 
+        tokenBalance, 
+        tokenDecimal, 
+        true, 
+        tokenName, 
+        tokenSymbol, 
+        "", 
+        "", 
+        _file, 
+        "string"
+      );
+      
+      alert("Token created successfully!");
+    } catch (error) {
+      console.error("Token creation error:", error);
+      alert("Failed to create token. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  }
-  
+  };
+
   const handleNameChange = (value: string) => {
-    setTokenName(value)
-  }
+    setTokenName(value);
+  };
+
   const handleSymbolChange = (value: string) => {
-    setTokenSymbol(value)
-  }
-  const handleLogoFileChange = ( files: FileList | null ) => {
+    setTokenSymbol(value);
+  };
+
+  const handleLogoFileChange = (files: FileList | null) => {
     if (files) {
-      setTokenLogo(files[0])
+      setTokenLogo(files[0]);
     } else {
-      setTokenLogo(null)
+      setTokenLogo(null);
     }
-  }
+  };
+
   const handleDecimalChange = (value: string) => {
-    setTokenDecimal(parseInt(value))
-  }
+    setTokenDecimal(parseInt(value));
+  };
+
   const handleBalanceChange = (value: string) => {
-    setTokenBalance(parseInt(value))
-  }
-  
+    setTokenBalance(parseInt(value));
+  };
+
   return (
     <main className='w-full min-w-[100vw] h-full min-h-screen bg-secondary-300'>
-      <LandingHeader />
-      <HotTokens />
-      <DiscoverTokens />
-      <Banner />
-      <Footer />
-      {/* <div className="bg-slate-900 w-full">
+      <Suspense fallback={<div className="h-20 bg-gray-800 animate-pulse"></div>}>
+        <LandingHeader />
+      </Suspense>
+      
+      <Suspense fallback={<div className="h-96 bg-gray-700 animate-pulse rounded-lg m-6"></div>}>
+        <HotTokens />
+      </Suspense>
+      
+      <Suspense fallback={<div className="h-96 bg-gray-700 animate-pulse rounded-lg m-6"></div>}>
+        <DiscoverTokens />
+      </Suspense>
+      
+      <Suspense fallback={<div className="h-32 bg-gray-700 animate-pulse"></div>}>
+        <Banner />
+      </Suspense>
+      
+      <Suspense fallback={<div className="h-64 bg-gray-800 animate-pulse"></div>}>
+        <Footer />
+      </Suspense>
+
+      {/* Optional: Uncomment this section if you want a simple token creation form on the homepage */}
+      {/* 
+      <div className="bg-slate-900 w-full">
         <div className="w-2/5 py-32 m-auto">
           <div>
             <p className="text-lg text-white font-medium my-2">Name: </p>
@@ -90,6 +147,7 @@ export default function Home() {
               value={tokenName}
             />
           </div>
+          
           <div>
             <p className="text-lg text-white font-medium my-2">Symbol: </p>
             <input 
@@ -98,6 +156,7 @@ export default function Home() {
               value={tokenSymbol}
             />
           </div>
+          
           <div>
             <p className="text-lg text-white font-medium my-2">Token Logo: </p>
             <input 
@@ -117,6 +176,7 @@ export default function Home() {
               value={tokenDecimal}
             />
           </div>
+          
           <div>
             <p className="text-lg text-white font-medium my-2">
               Tokens to Mint:{" "}
@@ -131,15 +191,16 @@ export default function Home() {
           
           <div className="mt-8">
             <button 
-              className="block w-[250px] py-4 px-8 rounded-3xl text-black text-xl font-bold bg-green-400 m-auto"
+              className="block w-[250px] py-4 px-8 rounded-3xl text-black text-xl font-bold bg-green-400 m-auto disabled:bg-gray-400"
               onClick={handleCreateToken}
-
+              disabled={isLoading}
             >
-              Create Token
+              {isLoading ? 'Creating...' : 'Create Token'}
             </button>
           </div>
         </div>
-      </div> */}
+      </div>
+      */}
     </main>
   );
 }

@@ -1,32 +1,33 @@
 /** @type {import('next').NextConfig} */
-
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  
   // Performance optimizations
   swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+
   experimental: {
-    // Enable Turbopack for faster builds (Next.js 13+)
+    // Fixed turbo configuration
     turbo: {
-      loaders: {
-        '.svg': ['@svgr/webpack'],
+      rules: {
+        "*.svg": ["@svgr/webpack"],
       },
     },
     // Reduce memory usage
     workerThreads: false,
     esmExternals: true,
   },
+
   webpack: (config, { dev, isServer }) => {
-    // Your existing fallbacks
+    // Fallbacks for missing modules
     config.resolve.fallback = {
       ...config.resolve.fallback,
       "pino-pretty": false,
       "encoding": false,
-      // Additional fallbacks for web3/crypto packages
       "fs": false,
       "net": false,
       "tls": false,
@@ -55,6 +56,7 @@ const nextConfig = {
 
     return config;
   },
+
   // Reduce bundle analysis overhead
   productionBrowserSourceMaps: false,
 }

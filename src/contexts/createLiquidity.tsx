@@ -1,10 +1,6 @@
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, MintLayout, Token } from '@solana/spl-token';
-import { Connection, PublicKey, Transaction, SystemProgram, Keypair, TransactionInstruction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { WalletContextState } from "@solana/wallet-adapter-react";
-import { Liquidity, TokenAccount, MAINNET_PROGRAM_ID, SPL_ACCOUNT_LAYOUT, TxVersion, ComputeBudgetConfig } from '@raydium-io/raydium-sdk';
-import { BN } from '@project-serum/anchor';
-
-const raydiumProgram = MAINNET_PROGRAM_ID;
 
 export async function createLiquidity(
     connection: Connection,
@@ -20,24 +16,41 @@ export async function createLiquidity(
     quoteAmount: number,
 ) {
     let lpMint: PublicKey | null = null;
+    
     if (wallet.publicKey != null) {
-        const walletTokenAccount = await connection.getTokenAccountsByOwner(wallet.publicKey, {
-            programId: TOKEN_PROGRAM_ID
-        });
-        const tokenAccountsInfo: TokenAccount[] = walletTokenAccount.value.map((i) => ({
-            pubkey: i.pubkey,
-            programId: i.account.owner,
-            accountInfo: SPL_ACCOUNT_LAYOUT.decode(i.account.data)
-        }))
-        console.log("tokenAccountsinfo ===>", tokenAccountsInfo);
-        console.log("marketid===>", marketId.toBase58());
         try {
+            // Dynamic import of heavy Raydium SDK
+            const [
+                { Liquidity, TokenAccount, MAINNET_PROGRAM_ID, SPL_ACCOUNT_LAYOUT, TxVersion, ComputeBudgetConfig },
+                { BN }
+            ] = await Promise.all([
+                import('@raydium-io/raydium-sdk'),
+                import('@project-serum/anchor')
+            ]);
+
+            const raydiumProgram = MAINNET_PROGRAM_ID;
+
+            const walletTokenAccount = await connection.getTokenAccountsByOwner(wallet.publicKey, {
+                programId: TOKEN_PROGRAM_ID
+            });
+            
+            const tokenAccountsInfo: TokenAccount[] = walletTokenAccount.value.map((i) => ({
+                pubkey: i.pubkey,
+                programId: i.account.owner,
+                accountInfo: SPL_ACCOUNT_LAYOUT.decode(i.account.data)
+            }));
+
+            console.log("tokenAccountsinfo ===>", tokenAccountsInfo);
+            console.log("marketid===>", marketId.toBase58());
+
             const budget: ComputeBudgetConfig = {
                 units: 600000,
                 microLamports: 25000
             };
+
             console.log("budget ===>", budget);
             console.log("before creating instruction!!!");
+
             const { innerTransactions, address } = await Liquidity.makeCreatePoolV4InstructionV2Simple({
                 connection,
                 programId: raydiumProgram.AmmV4,
@@ -67,23 +80,21 @@ export async function createLiquidity(
                 checkCreateATAOwner: true,
                 makeTxVersion: TxVersion.LEGACY,
                 feeDestinationId: new PublicKey("7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G5")
-                // feeDestinationId: new PublicKey("34vTq3GQxK6pgEbhnrgU1zs27gPWS6ZttxrYofDR4EkD")
             });
-            console.log("innter transactions ===>", innerTransactions);
-            // console.log('address ===>', address);
+
+            console.log("inner transactions ===>", innerTransactions);
             console.log("ammId ===>", address.ammId.toBase58());
             console.log("marketId ====>", address.marketId.toBase58());
-            console.log("pcMint ===>", address.pcMint.toBase58());
-            console.log("pcVault ===>", address.pcVault.toBase58());
-            console.log("coinMint ===>", address.coinMint.toBase58());
-            console.log("coinVault ===>", address.coinVault.toBase58());
             console.log("lpMint ===>", address.lpMint.toBase58());
+            
             lpMint = address.lpMint;
+
             for (let i = 0; i < innerTransactions.length; i++) {
                 const transaction = new Transaction();
                 for (let j = 0; j < innerTransactions[i].instructions.length; j++) {
                     transaction.add(innerTransactions[i].instructions[j]);
                 }
+                
                 if (wallet != undefined && wallet.signTransaction != undefined) {
                     try {
                         transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
@@ -91,7 +102,6 @@ export async function createLiquidity(
                         console.log(await connection.simulateTransaction(transaction));
 
                         let signedTx = await wallet.signTransaction(transaction);
-
                         const signature = await connection.sendRawTransaction(signedTx.serialize());
                         console.log("signature ====>", signature);
                     } catch (err) {
@@ -100,9 +110,9 @@ export async function createLiquidity(
                 }
             }
         } catch (err) {
-            console.log("creating liquidity ===>", err);
+            console.log("creating liquidity error ===>", err);
         }
-        // alert("123");
+        
         return lpMint;
     }
 }
