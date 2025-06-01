@@ -1,6 +1,4 @@
 // utils/fetchData.js
-import axios from 'axios';
-import NextCors from 'nextjs-cors';
 import axiosInstance from './axiosInstance';
 // export const fetchPopularCollections = async () => {
 //   try {

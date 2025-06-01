@@ -1,27 +1,40 @@
-// src/app/providers.tsx - Remove react-query dependency
-"use client";
-import React, { ReactNode } from "react";
-import { PageProvider } from "@/contexts/PageContext";
-import { ShowSideBarProvider } from "@/contexts/showSideBarContext";
-import dynamic from "next/dynamic";
+import React, { ReactNode } from 'react';
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
 
-// Dynamically load Solana wallet provider to reduce initial bundle
-const SolanaWalletProvider = dynamic(() => 
-  import("@/contexts/SolanaWalletProvider").then(mod => ({ default: mod.SolanaWalletProvider })), 
-  { 
-    ssr: false,
-    loading: () => <div className="min-h-screen bg-gray-900 animate-pulse"></div>
-  }
-);
+// Import wallet adapter CSS
+require('@solana/wallet-adapter-react-ui/styles.css');
 
-export default function Providers({ children }: { children: ReactNode }) {
-  return (
-    <ShowSideBarProvider>
-      <PageProvider>
-        <SolanaWalletProvider>
-          {children}
-        </SolanaWalletProvider>
-      </PageProvider>
-    </ShowSideBarProvider>
-  );
+interface SolanaWalletProviderProps {
+  children: ReactNode;
 }
+
+// Solana RPC endpoint - defaults to devnet
+const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.devnet.solana.com';
+
+export const SolanaWalletProvider: React.FC<SolanaWalletProviderProps> = ({ children }) => {
+  // Configure wallets - only include the most popular ones to reduce bundle size
+  const wallets = [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+  ];
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          {children}
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+};
+
+export default SolanaWalletProvider;
