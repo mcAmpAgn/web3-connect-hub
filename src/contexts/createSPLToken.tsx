@@ -2,6 +2,7 @@ import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, MintLayout, Token } from
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair, TransactionInstruction, sendAndConfirmRawTransaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import { Dispatch, SetStateAction } from 'react';
+import { PROGRAM_ID, DataV2, createCreateMetadataAccountV3Instruction } from '@metaplex-foundation/mpl-token-metadata';
 import { Metaplex, MetaplexFileTag, walletAdapterIdentity, irysStorage } from '@metaplex-foundation/js';
 
 export async function createSPLToken(owner: PublicKey, wallet: WalletContextState, connection: Connection, quantity: number, decimals: number, isChecked: boolean, tokenName: string, symbol: string, metadataURL: string, description: string, file: Readonly<{
@@ -31,6 +32,13 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
 
         let InitMint: TransactionInstruction
 
+        const [metadataPDA] = await PublicKey.findProgramAddress(
+            [
+                Buffer.from("metadata"),
+                PROGRAM_ID.toBuffer(),
+                mint_account.publicKey.toBuffer(),
+            ], PROGRAM_ID
+        );
 
         let URI: string = ''
         console.log("start =====>");
@@ -68,18 +76,18 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
 
         if (URI != '') {
 
-            // const tokenMetadata: DataV2 = {
-            //     name: tokenName,
-            //     symbol: symbol,
-            //     uri: URI,
-            //     sellerFeeBasisPoints: 0,
-            //     creators: null,
-            //     collection: null,
-            //     uses: null
-            // };
+            const tokenMetadata: DataV2 = {
+                name: tokenName,
+                symbol: symbol,
+                uri: URI,
+                sellerFeeBasisPoints: 0,
+                creators: null,
+                collection: null,
+                uses: null
+            };
 
             const args = {
-                data: null,
+                data: tokenMetadata,
                 isMutable: true,
                 collectionDetails: null
             };
@@ -137,7 +145,18 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
                 quantity * 10 ** decimals
             );
 
-
+            const MetadataInstruction = createCreateMetadataAccountV3Instruction(
+                {
+                    metadata: metadataPDA,
+                    mint: mint_account.publicKey,
+                    mintAuthority: owner,
+                    payer: owner,
+                    updateAuthority: owner,
+                },
+                {
+                    createMetadataAccountArgsV3: args,
+                }
+            );
 
             console.log("confirming");
             if (wallet.publicKey == null) return;
