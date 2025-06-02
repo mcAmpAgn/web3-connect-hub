@@ -65,20 +65,7 @@ export default function HomePage() {
       ]);
 
       const _file = await toMetaplexFileFromBrowser(tokenLogo);
-      await createSPLToken.createSPLToken(
-        wallet.publicKey, 
-        wallet, 
-        connection, 
-        tokenBalance, 
-        tokenDecimal, 
-        true, 
-        tokenName, 
-        tokenSymbol, 
-        "", 
-        "", 
-        _file, 
-        "string"
-      );
+      
       
       alert("Token created successfully!");
     } catch (error) {

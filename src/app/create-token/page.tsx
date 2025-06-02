@@ -95,20 +95,7 @@ export default function CreateTokenPage() {
                 severity: 'info',
             });
 
-            mintAddress = await createSPLToken.createSPLToken(
-                wallet.publicKey, 
-                wallet, 
-                connection, 
-                tokenBalance, 
-                tokenDecimal, 
-                true, 
-                tokenName, 
-                tokenSymbol, 
-                "", 
-                "", 
-                _file, 
-                "string"
-            );
+            
 
             setAlertState({
                 open: true,
