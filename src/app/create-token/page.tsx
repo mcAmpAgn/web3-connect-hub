@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // Import lightweight UI components (CORRECT)
-import { Alert } from '@/components/ui/Alert';
-import { Snackbar } from '@/components/ui/Snackbar';
+import { Alert } from '@/components/UI/Alert';
+import { Snackbar } from '@/components/UI/Snackbar';
 
 // Dynamically import heavy components
 const LandingHeader = dynamic(() => import('@/components/LandingHeader/LandingHeader'), {
