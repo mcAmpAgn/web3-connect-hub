@@ -3,7 +3,7 @@ import { Connection, PublicKey, Transaction, SystemProgram, Keypair, Transaction
 import { WalletContextState } from "@solana/wallet-adapter-react";
 import { Dispatch, SetStateAction } from 'react';
 import { PROGRAM_ID, DataV2, createCreateMetadataAccountV3Instruction } from '@metaplex-foundation/mpl-token-metadata';
-import { bundlrStorage, Metaplex, MetaplexFileTag, walletAdapterIdentity, } from '@metaplex-foundation/js';
+import { Metaplex, MetaplexFileTag, walletAdapterIdentity, irysStorage } from '@metaplex-foundation/js';
 
 export async function createSPLToken(owner: PublicKey, wallet: WalletContextState, connection: Connection, quantity: number, decimals: number, isChecked: boolean, tokenName: string, symbol: string, metadataURL: string, description: string, file: Readonly<{
     buffer: Buffer;
@@ -17,19 +17,16 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
     metadataMethod: string) {
     try {
         console.log("creating spl token")
-        // setIscreating(true)
-        // setTokenAddresss('')
 
         const metaplex = Metaplex.make(connection)
             .use(walletAdapterIdentity(wallet))
-            .use(bundlrStorage({
-                address: 'https://node1.bundlr.network',
-                providerUrl: "https://cosmopolitan-greatest-wave.solana-mainnet.quiknode.pro/85222162e13661be38ab86fe26925e667496812d/",
+            .use(irysStorage({
+                address: 'https://node1.irys.xyz',
+                providerUrl: "https://api.devnet.solana.com",
                 timeout: 60000,
             }));
 
         const mint_rent = await Token.getMinBalanceRentForExemptMint(connection);
-        // Token.createSetAuthorityInstruction()
 
         const mint_account = Keypair.generate();
 
@@ -51,11 +48,9 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
                 URI = metadataURL
             }
             else {
-                // setIscreating(false)
-                // setError('Please provide a metadata URL!')
+                throw new Error('Please provide a metadata URL!')
             }
         }
-
         else {
             if (file) {
                 console.log("upload ===>");
@@ -75,8 +70,7 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
                 }
             }
             else {
-                // setIscreating(false)
-                // setError('Please provide an image file!')
+                throw new Error('Please provide an image file!')
             }
         }
 
@@ -151,7 +145,6 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
                 quantity * 10 ** decimals
             );
 
-
             const MetadataInstruction = createCreateMetadataAccountV3Instruction(
                 {
                     metadata: metadataPDA,
@@ -173,37 +166,19 @@ export async function createSPLToken(owner: PublicKey, wallet: WalletContextStat
             createAccountTransaction.recentBlockhash = blockHash.blockhash;
             createAccountTransaction.feePayer = wallet.publicKey;
 
-            // const signedTX = await wallet.signTransaction(createAccountTransaction);
-
-            // const createAccountSignature = await sendAndConfirmTransaction(connection, signedTX, [mint_account]);
-            // console.log(await connection.simulateTransaction(createAccountTransaction));
-
             const createAccountSignature = await wallet.sendTransaction(createAccountTransaction, connection, { signers: [mint_account] });
 
             console.log("createAccountSignature ===>", createAccountSignature);
-            // return mint_account.publicKey;
+
             const createAccountconfirmed = await connection.confirmTransaction(createAccountSignature, 'confirmed');
             if (createAccountconfirmed)
                 return mint_account.publicKey;
             return undefined;
-            // const signature = createAccountSignature.toString()
-
-
-            // if (createAccountconfirmed) {
-            //     console.log("confirmed: ", signature);
-            //     return mint_account.publicKey;
-            //     // setIscreating(false);
-            //     // setTokenAddresss(mint_account.publicKey.toBase58());
-            //     // setSignature(signature)
-            // }
-            // const newToken = new Token(connection, mint_account.publicKey, TOKEN_PROGRAM_ID, [wallet.publicKey]);
         }
 
     } catch (error) {
         console.log("error: ", error);
-        // setIscreating(false);
-        // const err = (error as any)?.message;
-        // setError(err)
+        throw error;
     }
 
 }
